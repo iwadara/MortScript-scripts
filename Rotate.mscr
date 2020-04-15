@@ -1,4 +1,4 @@
-# ‰æ–Êc‰¡‚ÌƒgƒOƒ‹Ø‘Ö	rev1.0
+# ç”»é¢ç¸¦æ¨ªã®ãƒˆã‚°ãƒ«åˆ‡æ›¿	rev1.0
 If ( Screen("landscape") )
 	Rotate(0)
 Else
