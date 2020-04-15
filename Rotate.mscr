@@ -1,0 +1,6 @@
+# ‰æ–Êc‰¡‚ÌƒgƒOƒ‹Ø‘Ö	rev1.0
+If ( Screen("landscape") )
+	Rotate(0)
+Else
+	Rotate(90)
+EndIf

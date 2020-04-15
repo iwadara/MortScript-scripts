@@ -1,0 +1,75 @@
+# ----------------------------------------
+# Name:    QMAIL3_URL_click(rev1.0)
+# Author:  いわだら
+# Date:    2009/01/26 18:30
+# Version: MortScript-4.1-PPC
+#
+# ToDo:
+# - メールの受信に失敗したり、なかなか受信できなかった場合は能動的に取りにいくように
+# ----------------------------------------
+
+# ◆◆◆ ユーザー設定項目 ここから ◆◆◆
+# (1)QMAIL3の実行ファイルパス
+qmail_exe = "\Program Files\QMAIL3\q3u.exe"
+# (2)保存するメール作成ファイル名(デフォルト: "QMAIL3_URL_click.txt")
+mailName = "QMAIL3_URL_click.txt"
+# (3)QMAIL3 送信アカウント、自身が設定したアカウント名を入力
+qmail_account = "WILLCOM"
+# (4)エンコーディング
+qmail_type = "text/plain; charset=iso-2022-jp"
+# (5)QMAIL3 メール送信時の巡回先、あらかじめ QMAIL3 の [オプション] - [巡回] で追加しておく必要がある、設定した巡回先を入力して # をはずす
+qmail_goround = "自動送受信"
+# (6)送信先(デフォルト: メール銀河 ginga@yuki-lab.jp)
+mail_to = "ginga@yuki-lab.jp"
+# ◆◆◆ ユーザー設定項目 ここまで ◆◆◆
+
+# 必要となるスクリプト名を取得
+mailPath = SystemPath( "ScriptPath" ) \ mailName
+thisName = SystemPath( "ScriptName" ) & SystemPath( "ScriptExt" )
+
+# 引数 url が空のときは設定を開く
+If( url eq NULL)
+	Call clickSetup
+	Exit
+EndIf
+
+msg = NULL
+msg = msg & "To: "              & mail_to       & "^NL^"
+msg = msg & "Subject: "                         & "^NL^"
+msg = msg & "Content-Type: "    & qmail_type    & "^NL^"
+msg = msg & "X-QMAIL-Account: " & qmail_account & "^NL^"
+
+# 最後に、url を引数とした本文を追加
+msg = msg & "^NL^" & url
+
+WriteFile( mailPath, msg )
+qmail_args = "-c " & """" & mailPath & """" & " -q"
+RunWait( qmail_exe, qmail_args )
+
+# 巡回設定が有効な場合、巡回
+If( qmail_goround ne NULL )
+	Run( qmail_exe, "-g """ & qmail_goround & """ -q -f" )
+EndIf
+
+# 明示的に終了
+Exit
+
+Sub clickSetup
+	BigMessage( "以下の手順で初期設定を行ってください.^NL^" & \
+	"(1) URLを開くときの関連付けの設定を行う^NL^" & \
+	"\あなたのQMAIL3アカウントフォルダ\qmail.xmlを編集して、以下のセクションを追加してください.^NL^" & \
+	"※XMLファイルは、QMAIL3を閉じてから編集してください(既存の設定で上書きされます)^NL^" & \
+	"<section name=""Association"">^NL^" & \
+	"	<key name=""http"">""\Program Files\MortScript\MortScript.exe"" ""\My Documents\Mscr\QMAIL3_URL_click.mscr"" url=""%1""</key>^NL^" & \
+	"</section>^NL^" & \
+	"^NL^" & \
+	 "(2)QMAIL3の設定を確認、追加してください.^NL^" & \
+	"・QMAIL3 送信アカウント^NL^" & \
+	"・QMAIL3 巡回先^NL^" & \
+	"^NL^" & \
+	"(3)このファイル(" & thisName & "にQMAIL3に必要な情報を入力してください.^NL^" & \
+	"QMAIL3 送信アカウント" & qmail_account & "^NL^" & \
+	"QMAIL3 巡回先" & qmail_goround & "^NL^" , \
+	thisName )
+	Exit
+EndSub

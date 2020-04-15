@@ -1,0 +1,18 @@
+# BacklightMinus.mscr	rev1.0
+# バックライト輝度 マイナス
+a = RegRead( "HKCU", "ControlPanel\BackLight", "ACBrightness" )
+b = RegRead( "HKCU", "ControlPanel\BackLight", "BatteryBrightness" )
+# 外部電源使用中ならばAC輝度調整
+If( ExternalPowered() )
+	If ( a > 0 )
+		a = a - 1
+		SetBacklight( b, a )
+	EndIf
+Else
+	If ( b > 0 )
+		b = b - 1
+		# SetBacklight関数のバグ対応(バッテリー輝度は設定値が反映されない)
+		RegWriteDWord( "HKCU", "ControlPanel\BackLight", "BatteryBrightness", b )
+		SetBacklight( b, a )
+	EndIf
+EndIf

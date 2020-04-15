@@ -1,0 +1,96 @@
+# ----------------------------------------
+# Name:    NavibTime.mscr(rev1.0)
+# Author:  いわだら
+# Date:    2008/12/28 21:49
+# Version: MortScript-4.1-PPC
+# About:   時(12時間単位) - 分(10の位) - 分(1の位) をバイブでお知らせ
+# ----------------------------------------
+# 最優先で画面OFF
+ToggleDisplay(0)
+
+# ◆◆◆ ユーザー設定項目 ここから ◆◆◆
+
+# バイブ時間(長): 時・分・秒のおわりを伝えるバイブ時間 [ms]
+VIB_TIME_LONG    =  500
+
+# バイブ時間(短): 実際に回数分時間を知らせるバイブ時間 [ms]
+VIB_TIME_SHORT   =  200
+
+# 待ち時間(長): 時・分・秒を伝える前後に区切る大きな待ち時間 [ms]
+SLEEP_TIME_LONG  =  500
+
+# 待ち時間(短): 各バイブ動作の間に区切る小さな待ち時間 [ms]
+SLEEP_TIME_SHORT =  100
+
+# バイブ終了後にサスペンド状態に入るか → # はずす
+#SUSPEND_AFTER_VIB = TRUE
+
+# ◆◆◆ ユーザー設定項目 ここまで ◆◆◆
+
+# デバッグ用(出力のみ) → # はずす、もしくは引数オプション
+# (1) 今の時間をNavibTimeが使う形式で表示チェック
+# (2) 指定した時間に対してバイブ動作チェック
+#DEBUG=1
+#DEBUG=2
+
+GetTime( hour, min, sec )
+
+If ( hour > 12 )
+	hour = hour - 12
+EndIf
+min_ten = min / 10
+min = min - ( 10 * min_ten )
+
+If( DEBUG = 1 )
+	ToggleDisplay(1)
+	Message("12h: " & hour & "^NL^10m: " & min_ten & "^NL^min: " & min )
+	Exit
+EndIf
+If( DEBUG = 2 )
+	ToggleDisplay(1)
+	hour    = 0
+	min_ten = 0
+	min     = 1
+	Message("12h: " & hour & "^NL^10m: " & min_ten & "^NL^min: " & min )
+EndIf
+
+# 時(12時間単位)
+While( hour > 0 )
+	hour = hour - 1
+	Vibrate(VIB_TIME_SHORT)
+	Sleep(SLEEP_TIME_SHORT)
+EndWhile
+
+Sleep(SLEEP_TIME_LONG)
+Vibrate(VIB_TIME_LONG)
+Sleep(SLEEP_TIME_LONG)
+
+# 分(10の位)
+While( min_ten > 0 )
+	min_ten = min_ten - 1
+	Vibrate(VIB_TIME_SHORT)
+	Sleep(SLEEP_TIME_SHORT)
+EndWhile
+
+Sleep(SLEEP_TIME_LONG)
+Vibrate(VIB_TIME_LONG)
+Sleep(SLEEP_TIME_LONG)
+
+# 分(1の位)
+While( min > 0 )
+	min = min - 1
+	Vibrate(VIB_TIME_SHORT)
+	Sleep(SLEEP_TIME_SHORT)
+EndWhile
+
+Sleep(SLEEP_TIME_LONG)
+Vibrate(VIB_TIME_LONG)
+
+# サスペンド
+If( SUSPEND_AFTER_VIB )
+	PowerOff
+EndIf
+
+# 明示的に終了
+Exit
+
