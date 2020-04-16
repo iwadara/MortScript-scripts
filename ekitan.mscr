@@ -1,9 +1,15 @@
-# ekitan.mscr	rev1.6
-# ToDo
+# ----------------------------------------
+# Name:    ekitan.mscr(rev2.0)
+# Author:  いわだら
+# Date:    2008/07/20 01:41
+# Version: MortScript-4.1-PPC
+#
+# ToDo:
 # - エラー処理の強化
 # - 前回入力値の記憶(引数なし起動時)
 # - 履歴管理(10回前まで上書きせずに保存)
 # - 入力画面が出たらカーソルを最適位置に
+# ----------------------------------------
 
 # ◆◆◆ ユーザー設定項目 ここから ◆◆◆
 # (1)結果の保存先フォルダ(デフォルト: ekitan.mscrと同じフォルダ)
@@ -28,9 +34,9 @@ InetSetting = 0
 # ◆◆◆ ユーザー設定項目 ここまで ◆◆◆
 
 # ◆ Tips 1 ◆
-# 引数に sf=(乗車駅), st=(下車駅) をつけて起動できます(両方指定でも可)
+# 引数に saddr=(乗車駅), daddr=(下車駅) をつけて起動できます(両方指定でも可)
 # 例: 横浜から川崎.lnk
-# "\Program Files\MortScript\MortScript.exe" "\My Documents\Mscr\ekitan.mscr" sf="横浜" st="川崎"
+# "\Program Files\MortScript\MortScript.exe" "\My Documents\Mscr\ekitan.mscr" saddr="横浜" daddr="川崎"
 # ◆ Tips 2 ◆
 # ViewText(Todayプラグイン)との連携で、Today上に検索結果を表示しておくことができます
 # ★自動でTodayに結果表示 
@@ -38,6 +44,9 @@ InetSetting = 0
 # ☆手動でTodayに結果表示 
 #   ViewTextで「クリップボードから貼り付け」を行います(結果はクリップボードにも格納されています)
 # ◆ Tips End ◆
+
+# デバッグ用(urlPathの出力)
+#DEBUG = ON
 
 # 自動接続 ON
 If( InetSetting > 0 )
@@ -51,26 +60,24 @@ EndIf
 htmPath = folPath \ htmName
 txtPath = folPath \ txtName
 
-# 路線検索エンジンURLパス(駅前探険倶楽部SS)
-urlPath = "http://www8.ekitan.com/ss/N2?an=-1"
-urlPath2 = "http://www8.ekitan.com/ss/N3?an=-1"
+# 路線検索エンジンURLパス(Google マップの乗換案内)
+urlPath = "http://www.google.co.jp/transit?output=mobile"
 
 # 現在の時刻をセット
 GetTime( hh, mi, ss, DD, MM, YYYY )
 # スクリプト名を取得
 thisName = SystemPath( "ScriptName" ) & SystemPath( "ScriptExt" )
 
-foo = Input( "■駅探 路線検索スクリプト^NL^乗車・降車駅を入力してください.", \
+foo = Input( "■Google マップ乗換案内スクリプト^NL^乗車・降車駅を入力してください.", \
 thisName, 0, 1, \
-"(1)乗車=" & sf & "^NL^" & \
-"(2)降車=" & st & "^NL^" & \
-"(3)出発日付=" & YYYY & MM & DD & "^NL^" & \
-"(4)時間=" & hh & mi & "^NL^" & \
-"(5)発・着・終電(0:発 1:着 2:終電)=0^NL^" & \
-"(6)表示順(0:時間 1:料金 2:乗換回数)=0^NL^" & \
-"(7)100km以下特急利用(0:しない 1:する)=0^NL^" & \
-"(8)結果表示数(件)=" & ResNum & "^NL^" & \
-"(9)優先航空(0:なし 1:JAL 2:ANA 4:SKY/ADO)=0" )
+"(1)乗車=" & saddr & "^NL^" & \
+"(2)降車=" & daddr & "^NL^" & \
+"(3)時間=" & hh & mm & "^NL^" & \
+"(4)発・着・終電(0:発 1:着 2:終電)=0^NL^" & \
+"(5)表示順(0:時間 1:料金 2:乗換回数)=0^NL^" & \
+"(6)結果表示数(件)=" & ResNum & "^NL^" & \
+"(7)有料特急(1:使わない)=^NL^" & \
+"(8)飛行機(1:使わない)=^NL^" )
 # Cancel を押したら終了
 If( foo eq NULL )
 	Call ekiExit
@@ -84,14 +91,11 @@ ForEach line in split ( foo, "^LF^", 0 )
 	i = i + 1
 EndForEach
 
-# 終電検索用の特殊判定(srを2で指定した場合のみ)
-If( inArray[5] = 2)
-	urlPath = "http://www8.ekitan.com/ss/S2?an=0"
-	urlPath2 = "http://www8.ekitan.com/ss/S3?an=0"
-EndIf
-
 # 出力文字列の生成
 Call make_urlPath
+If( DEBUG )
+	Message( urlPath, "DEBUG" )
+EndIf
 
 Call chk_online
 While( NOT( is_online ) )
@@ -109,26 +113,6 @@ Download( urlPath, htmPath )
 text = ReadFile( htmPath )
 If( Length( text ) = NULL )
 	Call ekiExit
-EndIf
-
-# 同一駅名がある場合は駅名選択、そうでない場合はテキスト表示
-If( Find( text, "同一駅名" ) )
-	# 乗車駅セレクト
-	sfst = "sf"
-	Call sfst_sel
-	# 降車駅セレクト
-	sfst = "st"
-	Call sfst_sel
-
-	# 出力文字列の生成2(駅名選択後)
-	Call make_urlPath2
-
-	# HTMLファイルの取得, 保存
-	Download( urlPath2, htmPath )
-	text = ReadFile( htmPath )
-	If( Length( text ) = NULL )
-		Call ekiExit
-	EndIf
 EndIf
 
 # HTMLをテキスト用に変換
@@ -180,6 +164,12 @@ EndSub
 
 # [in] text, [out] text
 Sub html2text
+	# 文字列置換
+	text = Replace( text, "<br />", "^LF^" )
+	text = Replace( text, "&rArr;", "→" )
+	text = Replace( text, "&rarr;", "→" )
+	text = Replace( text, "&nbsp;", NULL )
+
 	# "<"で始まり、 ">"で終わる箇所はカット
 	buf = ""
 	x = Find( text, "<" )
@@ -195,168 +185,63 @@ Sub html2text
 	EndWhile
 	text = buf
 
-	# 不要な改行, スペースの除去
-	buf = ""
-	ForEach line in split ( text, "^LF^", 1 )
-		If( line ne NULL )
-			buf = buf & line & "^LF^"
-		EndIf
-	EndForEach
-	text = buf
-
 	# クリップボードにセット
 	If( UseClip )
 		SetClipText( text )
 	EndIf
 EndSub
 
-# [in] sfst [out] ekicode, ekiname
-Sub sfst_sel
-	# 既に駅が1つならば確定、そうでない場合はチョイス
-	wd = "TYPE=HIDDEN NAME=" & sfst & " VALUE="
-	x = Find( text, wd )
-	If( x > 0 )
-		urlPath2 = urlPath2 & "&" & sfst & "=" & \
-		SubStr( text, x + Length( wd ), 5 )
-	Else
-		wd = "<SELECT NAME=" & sfst & ">^CR^^LF^"
-		x = Find( text, wd )
-		If( x < 1 )
-			Call ekiExit
-		EndIf
-		y = Find( SubStr( text, x + Length( wd )  ), "^CR^^LF^</SELECT>")
-		If( y < 1 )
-			Call ekiExit
-		EndIf
-		buf = SubStr( text, x + Length( wd ), y )
-
-		i = 1
-		ForEach line in split ( buf, "^LF^", 0 )
-			# VALUE=の後ろの文字列をゲットする
-			bufsel[i] = Part( line, "=", 2 )
-			ekicode[i] = SubStr( Part( bufsel[i], ">", 1 ), 1, 5 )
-			ekiname[i] = Part( bufsel[i], ">", 2 )
-			i = i + 1
-		EndForEach
-
-		If( sfst eq "sf" )
-			scene = "乗車駅"
-		Else
-			scene = "下車駅"
-		EndIf
-		i = Choice( thisName, "【" & scene & "】^NL^同一駅名があります. 候補から選択して下さい.", 1, 15, ekiname )
-		If( i )
-			urlPath2 = urlPath2 & "&" & sfst & "=" & ekicode[i]
-		Else
-			Call ekiExit
-		EndIf
-	EndIf
-EndSub
-
 # 出力文字列の生成(urlPath)
 # ex.			in	out	summary
-# ------------------------------
-# sf=toukyou	1	1	乗車
-# st=yokohama	2	2	下車
-# YEAR=200704	3+	3	出発年月
-# DAY=16		3+	4	出発日
-# hour=20		4+	5	時
-# min1=3		4+	6	分(10の位)
-# min2=7		4+	7	分(1の位)
-# sr=0			5	8	時刻発着指定 0:発 1:着 2:終電(特殊)
-# rp=0			6	9	表示順 0:所要時間 1:料金 2:乗換回数
-# ep=0			7	10	100km以下特急利用 0:しない 1:する
-# pn=3			8	11	結果表示数
-# air=0			9	12	優先航空(0:なし 1:JAL 2:ANA 4:SKY/ADO)=0" )
+# ----------------------------------------------
+# saddr=toukyou		1	1	乗車
+# daddr=yokohama	2	2	下車
+# time=2037		3	3	時・分(hhmm)
+# ttype=arr		4	4	時刻発着指定 0:発(dep) 1:着(arr) 2:終電(last)
+# sort=0		5	5	表示順 0:時間(time) 1:料金(fare) 2:乗換回数(num)
+# num=3			6	6	結果表示数
+# noexp=1		7	7	有料特急を使わない
+# noal=1		8	8	飛行機を使わない
 Sub make_urlPath
 	i = 1
-	ForEach var in values ( "sf", "st", "YEAR", "DAY", "hour", "min1", "min2", "sr", "rp", "ep", "pn", "air" )
+	ForEach var in values ( "saddr", "daddr", "time", "ttype", "sort", "num", "noexp", "noal" )
 		Switch( i )
 		Case( 1 )
 			urlPath = urlPath & "&" & var & "=" & inArray[1]
 		Case( 2 )
 			urlPath = urlPath & "&" & var & "=" & inArray[2]
 		Case( 3 )
-			If( Length( inArray[3] ) = 8 )
-				urlPath = urlPath & "&" & var & "=" & SubStr( inArray[3], 1, 6 )
-			EndIf
+			urlPath = urlPath & "&" & var & "=" & inArray[3]
 		Case( 4 )
-			If( Length( inArray[3] ) = 8 )
-				urlPath = urlPath & "&" & var & "=" & SubStr( inArray[3], 7, 2 )
+			If( ( inArray[4] ) = 0 )
+				urlPath = urlPath & "&" & var & "=" & "dep"
+			EndIf
+			If( ( inArray[4] ) = 1 )
+				urlPath = urlPath & "&" & var & "=" & "arr"
+			EndIf
+			If( ( inArray[4] ) = 2 )
+				urlPath = urlPath & "&" & var & "=" & "last"
 			EndIf
 		Case( 5 )
-			If( Length( inArray[4] ) = 4 )
-				urlPath = urlPath & "&" & var & "=" & SubStr( inArray[4], 1, 2 )
+			If( ( inArray[5] ) = 0 )
+				urlPath = urlPath & "&" & var & "=" & "time"
+			EndIf
+			If( ( inArray[5] ) = 1 )
+				urlPath = urlPath & "&" & var & "=" & "fare"
+			EndIf
+			If( ( inArray[5] ) = 2 )
+				urlPath = urlPath & "&" & var & "=" & "num"
 			EndIf
 		Case( 6 )
-			If( Length( inArray[4] ) = 4 )
-				urlPath = urlPath & "&" & var & "=" & SubStr( inArray[4], 3, 1 )
-			EndIf
-		Case( 7 )
-			If( Length( inArray[4] ) = 4 )
-				urlPath = urlPath & "&" & var & "=" & SubStr( inArray[4], 4, 1 )
-			EndIf
-		Case( 8 )
-			urlPath = urlPath & "&" & var & "=" & inArray[5]
-		Case( 9 )
 			urlPath = urlPath & "&" & var & "=" & inArray[6]
-		Case( 10 )
-			urlPath = urlPath & "&" & var & "=" & inArray[7]
-		Case( 11 )
-			urlPath = urlPath & "&" & var & "=" & inArray[8]
-		Case( 12 )
-			urlPath = urlPath & "&" & var & "=" & inArray[9]
-		EndSwitch
-	    i = i + 1
-	EndForEach
-EndSub
-
-# 出力文字列の生成2(urlPath2)
-# ex.				in	out	summary
-# ----------------------------------
-# sf=3260-			OK	OK	乗車(駅コード)
-# st=1911-			OK	OK	下車(駅コード)
-# month=20070416	3	3	出発年月日
-# hour=20			4+	5	時
-# min1=3			4+	6	分(10の位)
-# min2=7			4+	7	分(1の位)
-# sr=0				5	8	時刻発着指定 0:発 1:着 2:終電(特殊)
-# rp=0				6	9	表示順 0:所要時間 1:料金 2:乗換回数
-# ep=0				7	10	100km以下特急利用 0:しない 1:する
-# pn=3				8	11	結果表示数
-# air=0				9	12	優先航空(0:なし 1:JAL 2:ANA 4:SKY/ADO)=0" )
-Sub make_urlPath2
-	i = 1
-	ForEach var in values ( "sf", "st", "month", "欠番", "hour", "min1", "min2", "sr", "rp", "ep", "pn", "air" )
-		Switch( i )
-		# Case( 1 ) は sfst_sel にて設定済
-		# Case( 2 ) は sfst_sel にて設定済
-		Case( 3 )
-			urlPath2 = urlPath2 & "&" & var & "=" & inArray[3]
-		# Case( 4 ) は欠番(YEARとDAYがmonthに統合)
-		# ここから下は make_urlPath と同様(urlPathがurlPath2になっているだけ)
-		Case( 5 )
-			If( Length( inArray[4] ) = 4 )
-				urlPath2 = urlPath2 & "&" & var & "=" & SubStr( inArray[4], 1, 2 )
-			EndIf
-		Case( 6 )
-			If( Length( inArray[4] ) = 4 )
-				urlPath2 = urlPath2 & "&" & var & "=" & SubStr( inArray[4], 3, 1 )
-			EndIf
 		Case( 7 )
-			If( Length( inArray[4] ) = 4 )
-				urlPath2 = urlPath2 & "&" & var & "=" & SubStr( inArray[4], 4, 1 )
+			If( ( inArray[7] ) = 1 )
+				urlPath = urlPath & "&" & var & "=" & "1"
 			EndIf
 		Case( 8 )
-			urlPath2 = urlPath2 & "&" & var & "=" & inArray[5]
-		Case( 9 )
-			urlPath2 = urlPath2 & "&" & var & "=" & inArray[6]
-		Case( 10 )
-			urlPath2 = urlPath2 & "&" & var & "=" & inArray[7]
-		Case( 11 )
-			urlPath2 = urlPath2 & "&" & var & "=" & inArray[8]
-		Case( 12 )
-			urlPath2 = urlPath2 & "&" & var & "=" & inArray[9]
+			If( ( inArray[8] ) = 1 )
+				urlPath = urlPath & "&" & var & "=" & "1"
+			EndIf
 		EndSwitch
 	    i = i + 1
 	EndForEach
