@@ -1,23 +1,20 @@
 # ----------------------------------------
-# Name:    ekitan.mscr(rev2.3)
+# Name:    ekitan.mscr(rev2.4)
 # Author:  いわだら
-# Date:    2008/12/18 22:21
+# Date:    2009/01/06 00:09
 # Version: MortScript-4.1-PPC
 #
 # ToDo:
 # - エラー処理の強化
-# - 前回入力値の記憶(引数なし起動時)
-# - 履歴管理(10回前まで上書きせずに保存)
-# - 入力画面が出たらカーソルを最適位置に
 # ----------------------------------------
 
 # ◆◆◆ ユーザー設定項目 ここから ◆◆◆
-# (1)結果の保存先フォルダ(デフォルト: ekitan.mscrと同じフォルダ)
-folPath = SystemPath( "ScriptPath" )
-# (2)保存するHTMLファイル名(デフォルト: "ekitan.htm.txt")
+# (1)保存するHTMLファイル名(デフォルト: "ekitan.htm.txt")
 htmName = "ekitan.htm.txt"
-# (3)保存するテキストファイル名(デフォルト: "ekitan.log.txt")
+# (2)保存するテキストファイル名(デフォルト: "ekitan.log.txt")
 txtName = "ekitan.log.txt"
+# (3)保存する検索履歴ファイル名(デフォルト: "ekitan.hist.txt")
+histName = "ekitan.hist.txt"
 # (4)結果表示数(デフォルト: 3件)
 ResNum = 3
 # (5)結果をクリップボードに格納する(ON/OFF)
@@ -31,27 +28,38 @@ InetSetting = 1
 # (7-B)[ダイアルソフト指定] WkTASK使用時は以下の2行の # をはずす
 #InetPath = "\Program Files\WkTask\WkTaskCmd.exe"
 #InetParam = "/o"
-# (8)解析する文字コード → 文字化けした結果が表示された場合、# を切り替えて読み取り時のエンコードを変更してください
+# (8)解析する文字コード → 文字化けした結果が表示された場合, # を切り替えて読み取り時のエンコードを変更してください
 Encode = "jis"
 #Encode = "utf8-prefix"
+# (9)検索履歴の最大保存数
+histListMax = 20
 # ◆◆◆ ユーザー設定項目 ここまで ◆◆◆
 
 # ◆ Tips 1 ◆
-# 引数に saddr=(乗車駅), daddr=(下車駅) をつけて起動できます(両方指定でも可)
+# 引数に saddr=(乗車駅), daddr=(下車駅) をつけて起動できます
 # 例: 横浜から川崎.lnk
 # "\Program Files\MortScript\MortScript.exe" "\My Documents\Mscr\ekitan.mscr" saddr="横浜" daddr="川崎"
 # ◆ Tips 2 ◆
-# ViewText(Todayプラグイン)との連携で、Today上に検索結果を表示しておくことができます
+# 駅名選択画面で乗車・下車駅を空のままOKを押すことで最近20件の検索履歴選択モードに移ります
+# また, 起動時の引数に histmode=1 をつけて起動することで検索履歴選択モードから起動できます
+# "\Program Files\MortScript\MortScript.exe" "\My Documents\Mscr\ekitan.mscr" histmode=1
+# ◆ Tips 3 ◆
+# ViewText(Todayプラグイン)との連携で, Today上に検索結果を表示しておくことができます
 # ★自動でTodayに結果表示 
 #   ViewTextで検索結果テキストファイルを指定します(デフォルト: ekitan.mscrと同じフォルダのekitan.log.txtを指定)
 # ☆手動でTodayに結果表示 
 #   ViewTextで「クリップボードから貼り付け」を行います(結果はクリップボードにも格納されています)
 # ◆ Tips End ◆
 
-# デバッグ用(urlPathの出力)
+# デバッグ用(URL出力, 履歴一致確認)
 #DEBUG = ON
+
 # PC用接続(オンライン判定なし)
-#forPC = ON
+mortType = MortScriptType()
+#Message( mortType )
+If( mortType eq "PC" )
+	forPC = ON
+EndIf
 
 # 自動接続 ON
 If( InetSetting > 0 )
@@ -61,47 +69,37 @@ If( InetSetting > 0 )
 	EndIf
 EndIf
 
-# 保存ファイルパスの確定
-htmPath = folPath \ htmName
-txtPath = folPath \ txtName
+# 必要となるスクリプト名を取得
+htmPath =  SystemPath( "ScriptPath" ) \ htmName
+txtPath =  SystemPath( "ScriptPath" ) \ txtName
+histPath = SystemPath( "ScriptPath" ) \ histName
+thisName = SystemPath( "ScriptName" ) & SystemPath( "ScriptExt" )
 
 # 路線検索エンジンURLパス(Google マップの乗換案内)
 urlPath = "http://www.google.co.jp/transit?output=mobile"
 
+# histmode 引数が渡されて起動した場合, 履歴選択モードに移る
+If( histmode )
+	Call choice_history
+EndIf
+
 # 現在の時刻をセット
 GetTime( hh, mi, ss, DD, MM, YYYY )
-# スクリプト名を取得
-thisName = SystemPath( "ScriptName" ) & SystemPath( "ScriptExt" )
 
-foo = Input( "■Google マップ乗換案内スクリプト^NL^乗車・降車駅を入力してください.", \
-thisName, 0, 1, \
-"(1)乗車=" & saddr & "^NL^" & \
-"(2)降車=" & daddr & "^NL^" & \
-"(3)時間=" & hh & mi & "^NL^" & \
-"(4)発・着・終電(0:発 1:着 2:終電)=0^NL^" & \
-"(5)表示順(0:時間 1:料金 2:乗換回数)=0^NL^" & \
-"(6)結果表示数(件)=" & ResNum & "^NL^" & \
-"(7)有料特急(1:使わない)=^NL^" & \
-"(8)飛行機(1:使わない)=" )
-# Cancel を押したら終了
-If( foo eq NULL )
-	Call ekiExit
-EndIf
-
-# 入力文字列の取得(inArray)
-i = 1
-ForEach line in split ( foo, "^LF^", 0 )
-	# イコールの後ろの文字列をゲットする
-	inArray[i] = Part( line, "=", 2 )
-	i = i + 1
-EndForEach
+# 乗車・降車駅がセットされるまで 駅名選択 → 履歴表示 の繰り返し
+EkiSetting = FALSE
+While( EkiSetting = FALSE )
+	Call ekiInput
+EndWhile
 
 # 出力文字列の生成
+time_all = TimeStamp()
 Call make_urlPath
 If( DEBUG )
-	Message( urlPath, "DEBUG" )
+	Message( urlPath, "[DEBUG] URL出力" )
 EndIf
 
+# ネットワーク接続確認
 Call chk_online
 While( NOT( is_online ) )
 	If( Question( \
@@ -114,6 +112,7 @@ While( NOT( is_online ) )
 EndWhile
 
 # HTMLファイルの取得, 保存
+time_download = TimeStamp()
 Download( urlPath, htmPath )
 text = ReadFile( htmPath, 0, Encode )
 If( Length( text ) = NULL )
@@ -121,22 +120,60 @@ If( Length( text ) = NULL )
 EndIf
 
 # HTMLをテキスト用に変換
-time_chk = TimeStamp()
+time_convert = TimeStamp()
 Call html2text
-time_chk = TimeStamp() - time_chk
-text = text & "Convert time: " & time_chk & "sec.^LF^"
 
+# 時間集計
+time_END = TimeStamp()
+# Download時間だけはtime_ENDでなく、time_convertから計算
+time_download = time_convert - time_download
+time_convert = time_END - time_convert
+time_all = time_END - time_all
+text = text & "All search time: " & time_all & "sec.^LF^"
+text = text & "Convert time:    " & time_convert & "sec.^LF^"
+text = text & "Download time:   " & time_download & "sec.^LF^"
 WriteFile( txtPath, text )
+
 # ViewText向けにTodayを再描画(すぐにテキストを反映)
 If( NOT( forPC ) )
 	RedrawToday
 EndIf
+
 # 結果をテキストで開く
 If( UseRun )
 	Run( txtPath )
 EndIf
+
+# 検索履歴ファイルに検索した乗車・降車駅を追記
+histList = NULL
+If( FileExists( histPath ) )
+	histList = ReadFile( histPath )
+EndIf
+
+histWrite = saddr & "から" & daddr
+histWriteAdd = NULL
+i = 1
+ForEach line in split ( histList, "^NL^", 0 )
+	If( ( line eq histWrite ) OR ( line eq NULL ) )
+		# 同じ駅名か空欄の場合はスキップ
+		If( DEBUG )
+			Message( "i=" & i & "^NL^histWrite=" & histWrite & "^NL^line=" & line, "[DEBUG] 履歴一致, 空欄確認" )
+		EndIf
+	Else
+		If( i < histListMax )
+			histWriteAdd = histWriteAdd & "^NL^" & line
+			i = i + 1
+		EndIf
+	EndIf
+EndForEach
+WriteFile( histPath, histWrite & histWriteAdd )
+
+# 正常終了
 Call ekiExit
 
+# ----------------------------------------
+#  ▽ Sub
+# ----------------------------------------
 # 終了処理
 Sub ekiExit
 	# 自動接続 OFF
@@ -148,6 +185,49 @@ Sub ekiExit
 	EndIf
 
 	Exit
+EndSub
+
+# 駅名選択
+Sub ekiInput
+	foo = Input( "■Google マップ乗換案内スクリプト^NL^乗車・降車駅を入力してください.", \
+	thisName, 0, 1, \
+	"(1)乗車=" & saddr & "^NL^" & \
+	"(2)降車=" & daddr & "^NL^" & \
+	"(3)時間=" & hh & mi & "^NL^" & \
+	"(4)発・着・終電(0:発 1:着 2:終電)=0^NL^" & \
+	"(5)表示順(0:時間 1:料金 2:乗換回数)=0^NL^" & \
+	"(6)結果表示数(件)=" & ResNum & "^NL^" & \
+	"(7)有料特急(1:使わない)=^NL^" & \
+	"(8)飛行機(1:使わない)=" )
+	# Cancel を押したら終了
+	If( foo eq NULL )
+		Call ekiExit
+	EndIf
+
+	# 入力文字列の取得(inArray)
+	i = 1
+	ForEach line in split ( foo, "^LF^", 0 )
+		# イコールの後ろの文字列をゲットする
+		inArray[i] = Part( line, "=", 2 )
+		i = i + 1
+	EndForEach
+
+	# 乗車駅[1]か下車駅[2]が未入力ならば履歴選択
+	If( ( inArray[1] eq NULL ) OR ( inArray[2] eq NULL ) )
+		time_enterbug = TimeStamp()
+
+		Call choice_history
+
+		# MortScript使用中のEnterボタン確定時の不具合対策(v4.0, v4.1で発生する)
+		# → 関数コールから 2 秒未満で確定された場合、再コールする
+		If( ( histNum = 0 ) AND \
+			( ( TimeStamp() - time_enterbug ) < 2 ) )
+			#Message( "おそらく、Enterでの確定呼び出しと判定(リコールします)" )
+			Call choice_history
+		EndIf
+	Else
+		EkiSetting = TRUE
+	EndIf
 EndSub
 
 # 接続チェック(W-SIM, 無線LAN, ActiveSync)
@@ -206,7 +286,7 @@ Sub html2text
 	text = Replace( text, "</form>", NULL )
 
 	# 1個くらいしかなさそうなタグ(仕様変更されたらすぐに意味なくなるかも)
-	# TODO: あまりに変更が多いようなら、xml記述のencodingを見てReadFileのエンコード指定を行うように対応する
+	# TODO: あまりに変更が多いようなら, xml記述のencodingを見てReadFileのエンコード指定を行うように対応する
 	text = Replace( text, "<?xml version=""1.0"" encoding=""UTF-8""?>", NULL )
 	text = Replace( text, "<?xml version=""1.0"" encoding=""Shift_JIS""?>", NULL )
 	text = Replace( text, "<!DOCTYPE html PUBLIC ""-//WAPFORUM//DTD XHTML Mobile 1.0//EN"" ""http://www.wapforum.org/DTD/xhtml-mobile10.dtd"">", NULL )
@@ -227,7 +307,7 @@ Sub html2text
 	text = Replace( text, "</html>", NULL )
 	text = Replace( text, "<html>", NULL )
 
-	# "<"で始まり、 ">"で終わる箇所はカット
+	# "<"で始まり, ">"で終わる箇所はカット
 	buf = ""
 	x = Find( text, "<" )
 	While( x > 0 )
@@ -264,9 +344,11 @@ Sub make_urlPath
 	ForEach var in values ( "saddr", "daddr", "time", "ttype", "sort", "num", "noexp", "noal" )
 		Switch( i )
 		Case( 1 )
-			urlPath = urlPath & "&" & var & "=" & inArray[1]
+			saddr = inArray[1]
+			urlPath = urlPath & "&" & var & "=" & saddr
 		Case( 2 )
-			urlPath = urlPath & "&" & var & "=" & inArray[2]
+			daddr = inArray[2]
+			urlPath = urlPath & "&" & var & "=" & daddr
 		Case( 3 )
 			urlPath = urlPath & "&" & var & "=" & inArray[3]
 		Case( 4 )
@@ -302,4 +384,22 @@ Sub make_urlPath
 		EndSwitch
 	    i = i + 1
 	EndForEach
+EndSub
+
+# 履歴ファイルが存在する場合 → 履歴を選択して乗車・降車駅をセット
+# [in]  histPath
+# [out] saddr, daddr, histNum
+Sub choice_history
+	If( FileExists( histPath ) )
+		histList = ReadFile( histPath )
+		histArray = Split( histList , "^NL^" )
+		histNum = Choice( thisName, \
+			"■Google マップ乗換案内スクリプト^NL^検索履歴から乗車・降車駅を選択.", \
+			0, 0, histArray)
+		fromTo = Split( histArray[histNum] , "から" )
+		saddr = fromTo[1]
+		daddr = fromTo[2]
+	Else
+		Message( "履歴ファイルがありません.^NL^乗車・降車駅を入力してください.", thisName )
+	EndIf
 EndSub
