@@ -1,4 +1,4 @@
-# ekitan.mscr	rev1.5
+# ekitan.mscr	rev1.6
 # ToDo
 # - エラー処理の強化
 # - 前回入力値の記憶(引数なし起動時)
@@ -18,9 +18,13 @@ ResNum = 3
 UseClip = ON
 # (6)結果をテキストエディタで開く(ON/OFF)
 UseRun = ON
-# (7)harddialを使って自動接続ON/OFFを行うか → 0:無効, 1:有効(アドエスv1.01a以上), 2:有効(それ以外)
-HarddialSet = 0
-HarddialPath = "\Program Files\harddial\harddial.exe"
+# (7)ダイアルソフトを使って自動接続ON/OFFを行うか → 0:無効, 1:有効(アドエスv1.01a以上), 2:有効(それ以外)
+InetSetting = 0
+# (7-A)[ダイアルソフト指定] harddial使用時は以下の1行の # をはずす
+#InetPath = "\Program Files\harddial\harddial.exe"
+# (7-B)[ダイアルソフト指定] WkTASK使用時は以下の2行の # をはずす
+#InetPath = "\Program Files\WkTask\WkTaskCmd.exe"
+#InetParam = "/o"
 # ◆◆◆ ユーザー設定項目 ここまで ◆◆◆
 
 # ◆ Tips 1 ◆
@@ -36,10 +40,10 @@ HarddialPath = "\Program Files\harddial\harddial.exe"
 # ◆ Tips End ◆
 
 # 自動接続 ON
-If( HarddialSet > 0 )
+If( InetSetting > 0 )
 	Call chk_online
 	If( NOT( is_online ) )
-		Run(HarddialPath)
+		Run( InetPath, InetParam )
 	EndIf
 EndIf
 
@@ -80,7 +84,7 @@ ForEach line in split ( foo, "^LF^", 0 )
 	i = i + 1
 EndForEach
 
-# 終電検索を行うか特別に判定(srで2を指定した場合のみ)
+# 終電検索用の特殊判定(srを2で指定した場合のみ)
 If( inArray[5] = 2)
 	urlPath = "http://www8.ekitan.com/ss/S2?an=0"
 	urlPath2 = "http://www8.ekitan.com/ss/S3?an=0"
@@ -141,10 +145,10 @@ Call ekiExit
 # 終了処理
 Sub ekiExit
 	# 自動接続 OFF
-	If( HarddialSet > 0 )
+	If( InetSetting > 0 )
 		Call chk_online
 		If( is_online )
-			Run(HarddialPath)
+			Run( InetPath, InetParam )
 		EndIf
 	EndIf
 
@@ -158,7 +162,7 @@ Sub chk_online
 	rapi = RegRead("HKLM", "System\State\Hardware", "Cradled")
 
 	# 無線LAN判定はアドエスv1.01a以上だけ特殊
-	If( HarddialSet = 1)
+	If( InetSetting = 1)
 		wlan = RegRead("HKLM", "System\State\Hardware", "WiFi")
 		If( wlan = 1 )
 			wlan = 0
