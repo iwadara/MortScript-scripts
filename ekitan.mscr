@@ -1,28 +1,41 @@
-# ekitan.mscr	rev1.1
+# ekitan.mscr	rev1.2
 # ToDo
-# - 前回入力値の記憶
-# - 履歴管理(10回前まで上書きせずに保存)
 # - 自動接続/切断
-# - 入力画面が出たらカーソルを最適位置に
 # - エラー処理の強化
-# - 保存ログをディレクトリ指定にする
+# - 前回入力値の記憶(引数なし起動時)
+# - 履歴管理(10回前まで上書きせずに保存)
+# - 入力画面が出たらカーソルを最適位置に
 
 # ◆◆◆ ユーザー設定項目 ここから ◆◆◆
-# (1)保存するHTMLファイルのパス
-htmPath = SystemPath( "ScriptPath" ) \ "ekitan.htm.txt"
-# (2)保存するテキストファイルのパス
-txtPath = SystemPath( "ScriptPath" ) \ "ekitan.log.txt"
-# (3)結果表示数(デフォルト:3件)
+# (1)結果の保存先フォルダ(デフォルト: ekitan.mscrと同じフォルダ)
+folPath = SystemPath( "ScriptPath" )
+# (2)保存するHTMLファイル名(デフォルト: "ekitan.htm.txt")
+htmName = "ekitan.htm.txt"
+# (3)保存するテキストファイル名(デフォルト: "ekitan.log.txt")
+txtName = "ekitan.log.txt"
+# (4)結果表示数(デフォルト: 3件)
 ResNum = 3
-# (4)結果をクリップボードに格納する(ON/OFF)
+# (5)結果をクリップボードに格納する(ON/OFF)
 UseClip = ON
+# (6)結果をテキストエディタで開く(ON/OFF)
+UseRun = ON
 # ◆◆◆ ユーザー設定項目 ここまで ◆◆◆
 
 # ◆ Tips 1 ◆
 # 引数に sf=(乗車駅), st=(下車駅) をつけて起動できます(両方指定でも可)
 # 例: 横浜から川崎.lnk
 # "\Program Files\MortScript\MortScript.exe" "\My Documents\Mscr\ekitan.mscr" sf="横浜" st="川崎"
+# ◆ Tips 2 ◆
+# ViewText(Todayプラグイン)との連携で、Today上に検索結果を表示しておくことができます
+# ★自動でTodayに結果表示 
+#   ViewTextで検索結果テキストファイルを指定します(デフォルト: ekitan.mscrと同じフォルダのekitan.log.txtを指定)
+# ☆手動でTodayに結果表示 
+#   ViewTextで「クリップボードから貼り付け」を行います(結果はクリップボードにも格納されています)
 # ◆ Tips End ◆
+
+# 保存ファイルパスの確定
+htmPath = folPath \ htmName
+txtPath = folPath \ txtName
 
 # 路線検索エンジンURLパス(駅前探険倶楽部SS)
 urlPath = "http://www8.ekitan.com/ss/N2?an=-1"
@@ -60,10 +73,11 @@ EndForEach
 # 出力文字列の生成
 Call make_urlPath
 
-# 接続チェック( W-SIM, 無線LAN )
+# 接続チェック( W-SIM, 無線LAN, ActiveSync )
 wsim = RegRead("HKLM", "System\State\Phone", "Status")
 wlan = RegRead("HKLM", "System\State\Hardware", "WiFi")
-While( NOT( wsim OR wlan ) )
+rapi = RegRead("HKLM", "System\State\Hardware", "Cradled")
+While( NOT( wsim OR wlan OR rapi ) )
 	If( Question( \
 		"オフライン:^NL^接続を行ってください.", \
 		thisName, "RetryCancel" ) = CANCEL )
@@ -106,7 +120,10 @@ Call html2text
 WriteFile( txtPath, text )
 # ViewText向けにTodayを再描画(すぐにテキストを反映)
 RedrawToday
-Run( txtPath )
+# 結果をテキストで開く
+If( UseRun )
+	Run( txtPath )
+EndIf
 Exit
 
 # [in] text, [out] text
@@ -175,7 +192,7 @@ Sub sfst_sel
 		Else
 			scene = "下車駅"
 		EndIf
-		i = Choice( thisName, "【" & scene & "】^NL^同一駅名があります. 候補から選択して下さい.", 1, 10, ekiname )
+		i = Choice( thisName, "【" & scene & "】^NL^同一駅名があります. 候補から選択して下さい.", 1, 15, ekiname )
 		If( i )
 			urlPath2 = urlPath2 & "&" & sfst & "=" & ekicode[i]
 		Else
