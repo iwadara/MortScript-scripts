@@ -1,4 +1,4 @@
-# ekitan.mscr	rev1.4
+# ekitan.mscr	rev1.5
 # ToDo
 # - エラー処理の強化
 # - 前回入力値の記憶(引数なし起動時)
@@ -18,8 +18,9 @@ ResNum = 3
 UseClip = ON
 # (6)結果をテキストエディタで開く(ON/OFF)
 UseRun = ON
-# (7)harddialを使って自動接続ON/OFFを行う場合 → 次行先頭の#をはずす
-#UseHarddial = "\Program Files\harddial\harddial.exe"
+# (7)harddialを使って自動接続ON/OFFを行うか → 0:無効, 1:有効(アドエスv1.01a以上), 2:有効(それ以外)
+HarddialSet = 0
+HarddialPath = "\Program Files\harddial\harddial.exe"
 # ◆◆◆ ユーザー設定項目 ここまで ◆◆◆
 
 # ◆ Tips 1 ◆
@@ -35,10 +36,10 @@ UseRun = ON
 # ◆ Tips End ◆
 
 # 自動接続 ON
-If( UseHarddial ne NULL )
+If( HarddialSet > 0 )
 	Call chk_online
 	If( NOT( is_online ) )
-		Run(UseHarddial)
+		Run(HarddialPath)
 	EndIf
 EndIf
 
@@ -61,7 +62,7 @@ thisName, 0, 1, \
 "(2)降車=" & st & "^NL^" & \
 "(3)出発日付=" & YYYY & MM & DD & "^NL^" & \
 "(4)時間=" & hh & mi & "^NL^" & \
-"(5)発・着(0:発 1:着)=0^NL^" & \
+"(5)発・着・終電(0:発 1:着 2:終電)=0^NL^" & \
 "(6)表示順(0:時間 1:料金 2:乗換回数)=0^NL^" & \
 "(7)100km以下特急利用(0:しない 1:する)=0^NL^" & \
 "(8)結果表示数(件)=" & ResNum & "^NL^" & \
@@ -78,6 +79,12 @@ ForEach line in split ( foo, "^LF^", 0 )
 	inArray[i] = Part( line, "=", 2 )
 	i = i + 1
 EndForEach
+
+# 終電検索を行うか特別に判定(srで2を指定した場合のみ)
+If( inArray[5] = 2)
+	urlPath = "http://www8.ekitan.com/ss/S2?an=0"
+	urlPath2 = "http://www8.ekitan.com/ss/S3?an=0"
+EndIf
 
 # 出力文字列の生成
 Call make_urlPath
@@ -134,10 +141,10 @@ Call ekiExit
 # 終了処理
 Sub ekiExit
 	# 自動接続 OFF
-	If( UseHarddial ne NULL )
+	If( HarddialSet > 0 )
 		Call chk_online
 		If( is_online )
-			Run(UseHarddial)
+			Run(HarddialPath)
 		EndIf
 	EndIf
 
@@ -148,8 +155,18 @@ EndSub
 # [out] is_online
 Sub chk_online
 	wsim = RegRead("HKLM", "System\State\Phone", "Status")
-	wlan = RegRead("HKLM", "System\State\Hardware", "WiFi")
 	rapi = RegRead("HKLM", "System\State\Hardware", "Cradled")
+
+	# 無線LAN判定はアドエスv1.01a以上だけ特殊
+	If( HarddialSet = 1)
+		wlan = RegRead("HKLM", "System\State\Hardware", "WiFi")
+		If( wlan = 1 )
+			wlan = 0
+		EndIf
+	Else
+		wlan = RegRead("HKLM", "System\State\Hardware", "WiFi")
+	EndIf
+
 	If( wsim OR wlan OR rapi )
 		is_online = true
 	Else
@@ -242,7 +259,7 @@ EndSub
 # hour=20		4+	5	時
 # min1=3		4+	6	分(10の位)
 # min2=7		4+	7	分(1の位)
-# sr=0			5	8	時刻発着指定 0:発 1:着
+# sr=0			5	8	時刻発着指定 0:発 1:着 2:終電(特殊)
 # rp=0			6	9	表示順 0:所要時間 1:料金 2:乗換回数
 # ep=0			7	10	100km以下特急利用 0:しない 1:する
 # pn=3			8	11	結果表示数
@@ -299,7 +316,7 @@ EndSub
 # hour=20			4+	5	時
 # min1=3			4+	6	分(10の位)
 # min2=7			4+	7	分(1の位)
-# sr=0				5	8	時刻発着指定 0:発 1:着
+# sr=0				5	8	時刻発着指定 0:発 1:着 2:終電(特殊)
 # rp=0				6	9	表示順 0:所要時間 1:料金 2:乗換回数
 # ep=0				7	10	100km以下特急利用 0:しない 1:する
 # pn=3				8	11	結果表示数
