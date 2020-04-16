@@ -1,6 +1,5 @@
-# ekitan.mscr	rev1.2
+# ekitan.mscr	rev1.3
 # ToDo
-# - 自動接続/切断
 # - エラー処理の強化
 # - 前回入力値の記憶(引数なし起動時)
 # - 履歴管理(10回前まで上書きせずに保存)
@@ -85,6 +84,7 @@ While( NOT( wsim OR wlan OR rapi ) )
 	Else
 		wsim = RegRead("HKLM", "System\State\Phone", "Status")
 		wlan = RegRead("HKLM", "System\State\Hardware", "WiFi")
+		rapi = RegRead("HKLM", "System\State\Hardware", "Cradled")
 	EndIf
 EndWhile
 
