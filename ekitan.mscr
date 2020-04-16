@@ -1,7 +1,7 @@
 # ----------------------------------------
-# Name:    ekitan.mscr(rev2.2)
+# Name:    ekitan.mscr(rev2.3)
 # Author:  いわだら
-# Date:    2008/12/16 01:10
+# Date:    2008/12/18 22:21
 # Version: MortScript-4.1-PPC
 #
 # ToDo:
@@ -31,6 +31,9 @@ InetSetting = 1
 # (7-B)[ダイアルソフト指定] WkTASK使用時は以下の2行の # をはずす
 #InetPath = "\Program Files\WkTask\WkTaskCmd.exe"
 #InetParam = "/o"
+# (8)解析する文字コード → 文字化けした結果が表示された場合、# を切り替えて読み取り時のエンコードを変更してください
+Encode = "jis"
+#Encode = "utf8-prefix"
 # ◆◆◆ ユーザー設定項目 ここまで ◆◆◆
 
 # ◆ Tips 1 ◆
@@ -47,12 +50,12 @@ InetSetting = 1
 
 # デバッグ用(urlPathの出力)
 #DEBUG = ON
+# PC用接続(オンライン判定なし)
+#forPC = ON
 
 # 自動接続 ON
 If( InetSetting > 0 )
 	Call chk_online
-	# PC用DEBUG(オンライン判定なし)
-	# is_online = true
 	If( NOT( is_online ) )
 		Run( InetPath, InetParam )
 	EndIf
@@ -112,7 +115,7 @@ EndWhile
 
 # HTMLファイルの取得, 保存
 Download( urlPath, htmPath )
-text = ReadFile( htmPath, 0, "utf8-prefix" )
+text = ReadFile( htmPath, 0, Encode )
 If( Length( text ) = NULL )
 	Call ekiExit
 EndIf
@@ -125,7 +128,9 @@ text = text & "Convert time: " & time_chk & "sec.^LF^"
 
 WriteFile( txtPath, text )
 # ViewText向けにTodayを再描画(すぐにテキストを反映)
-RedrawToday
+If( NOT( forPC ) )
+	RedrawToday
+EndIf
 # 結果をテキストで開く
 If( UseRun )
 	Run( txtPath )
@@ -161,7 +166,7 @@ Sub chk_online
 		wlan = RegRead("HKLM", "System\State\Hardware", "WiFi")
 	EndIf
 
-	If( wsim OR wlan OR rapi )
+	If( wsim OR wlan OR rapi OR forPC )
 		is_online = true
 	Else
 		is_online = false
@@ -201,7 +206,9 @@ Sub html2text
 	text = Replace( text, "</form>", NULL )
 
 	# 1個くらいしかなさそうなタグ(仕様変更されたらすぐに意味なくなるかも)
+	# TODO: あまりに変更が多いようなら、xml記述のencodingを見てReadFileのエンコード指定を行うように対応する
 	text = Replace( text, "<?xml version=""1.0"" encoding=""UTF-8""?>", NULL )
+	text = Replace( text, "<?xml version=""1.0"" encoding=""Shift_JIS""?>", NULL )
 	text = Replace( text, "<!DOCTYPE html PUBLIC ""-//WAPFORUM//DTD XHTML Mobile 1.0//EN"" ""http://www.wapforum.org/DTD/xhtml-mobile10.dtd"">", NULL )
 	text = Replace( text, "<html xmlns=""http://www.w3.org/1999/xhtml"">", NULL )
 	text = Replace( text, "<img src=""http://www.google.co.jp/images/transit_mobile_logo.gif"" alt=""Google Local"" />", NULL )
