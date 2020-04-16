@@ -1,7 +1,7 @@
 # ----------------------------------------
-# Name:    ekitan.mscr(rev2.4)
+# Name:    ekitan.mscr(rev2.5)
 # Author:  いわだら
-# Date:    2009/01/06 00:09
+# Date:    2009/01/20 00:00
 # Version: MortScript-4.1-PPC
 #
 # ToDo:
@@ -18,21 +18,40 @@ histName = "ekitan.hist.txt"
 # (4)結果表示数(デフォルト: 3件)
 ResNum = 3
 # (5)結果をクリップボードに格納する(ON/OFF)
-UseClip = ON
+UseClip = OFF
 # (6)結果をテキストエディタで開く(ON/OFF)
 UseRun = ON
 # (7)ダイアルソフトを使って自動接続ON/OFFを行うか → 0:無効, 1:有効(アドエスv1.01a以上), 2:有効(それ以外)
-InetSetting = 1
+InetSetting = 0
 # (7-A)[ダイアルソフト指定] harddial使用時は以下の1行の # をはずす
 #InetPath = "\Program Files\harddial\harddial.exe"
 # (7-B)[ダイアルソフト指定] WkTASK使用時は以下の2行の # をはずす
 #InetPath = "\Program Files\WkTask\WkTaskCmd.exe"
 #InetParam = "/o"
-# (8)解析する文字コード → 文字化けした結果が表示された場合, # を切り替えて読み取り時のエンコードを変更してください
+# (8)路線検索エンジンURLパス(Google マップの乗換案内)
+urlPath = "http://www.google.co.jp/transit?output=mobile"
+# (8-A)解析する文字コード → 文字化けした結果が表示された場合, # を切り替えて読み取り時のエンコードを変更してください
 Encode = "jis"
 #Encode = "utf8-prefix"
 # (9)検索履歴の最大保存数
 histListMax = 20
+# (10)[mailmode] メーラーの実行ファイルパス(使うメーラーのみ # をはずす、全てコメントアウトされているとURLをクリップボードにコピー)
+# ・W-ZERO3メール
+#stmail_exe = "\Windows\STMail.exe"
+# ・QMAIL3
+#qmail_exe = "\Program Files\QMAIL3\q3u.exe"
+# ・SpeedMail
+#speedmail_exe = "\Program Files\SpeedMail\SpeedMail.exe"
+# (10-A)[mailmode] QMAIL3 保存するメール作成ファイル名(デフォルト: "ekitan.mail.txt")
+mailName = "ekitan.mail.txt"
+# (10-B)[mailmode] QMAIL3 送信アカウント、自身が設定したアカウント名を入力
+qmail_account = "WILLCOM"
+# (10-C)[mailmode] QMAIL3 エンコーディング
+qmail_type = "text/plain; charset=iso-2022-jp"
+# (10-D)[mailmode] QMAIL3 メール送信時の巡回先、あらかじめ QMAIL3 の [オプション] - [巡回] で追加しておく必要がある、設定した巡回先を入力して # をはずす
+#qmail_goround = "自動送受信"
+# (11)[mailmode] 送信先(デフォルト: メール銀河 ginga@yuki-lab.jp)
+mail_to = "ginga@yuki-lab.jp"
 # ◆◆◆ ユーザー設定項目 ここまで ◆◆◆
 
 # ◆ Tips 1 ◆
@@ -44,6 +63,11 @@ histListMax = 20
 # また, 起動時の引数に histmode=1 をつけて起動することで検索履歴選択モードから起動できます
 # "\Program Files\MortScript\MortScript.exe" "\My Documents\Mscr\ekitan.mscr" histmode=1
 # ◆ Tips 3 ◆
+# 起動時の引数に mailmode=1 をつけて起動することで、メールモードに移ります
+# 駅名を設定後、ユーザー設定項目で指定したメーラーで検索結果を送受信できます
+# histmode=1 とも共存できます
+# "\Program Files\MortScript\MortScript.exe" "\My Documents\Mscr\ekitan.mscr" mailmode=1 histmode=1
+# ◆ Tips 4 ◆
 # ViewText(Todayプラグイン)との連携で, Today上に検索結果を表示しておくことができます
 # ★自動でTodayに結果表示 
 #   ViewTextで検索結果テキストファイルを指定します(デフォルト: ekitan.mscrと同じフォルダのekitan.log.txtを指定)
@@ -54,6 +78,12 @@ histListMax = 20
 # デバッグ用(URL出力, 履歴一致確認)
 #DEBUG = ON
 
+# (labs) 何分前に出ればいいかも出力
+# ※Googleが返すhtmlをみてエイヤ！で計算しているため、完全α実装であることに注意
+# → DateToUnixtime.mscrが見つかった場合、家を出てから駅にたどり着くまでの時間の入力画面に現れる
+# DateToUnixtime.mscr が必須(同じフォルダに置く場合はこのまま)
+DateToUnixtime_mscr = SystemPath( "ScriptPath" ) \ "DateToUnixtime.mscr"
+
 # PC用接続(オンライン判定なし)
 mortType = MortScriptType()
 #Message( mortType )
@@ -62,7 +92,7 @@ If( mortType eq "PC" )
 EndIf
 
 # 自動接続 ON
-If( InetSetting > 0 )
+If( ( InetSetting > 0 ) AND ( mailmode = 0 ) )
 	Call chk_online
 	If( NOT( is_online ) )
 		Run( InetPath, InetParam )
@@ -73,10 +103,8 @@ EndIf
 htmPath =  SystemPath( "ScriptPath" ) \ htmName
 txtPath =  SystemPath( "ScriptPath" ) \ txtName
 histPath = SystemPath( "ScriptPath" ) \ histName
+mailPath = SystemPath( "ScriptPath" ) \ mailName
 thisName = SystemPath( "ScriptName" ) & SystemPath( "ScriptExt" )
-
-# 路線検索エンジンURLパス(Google マップの乗換案内)
-urlPath = "http://www.google.co.jp/transit?output=mobile"
 
 # histmode 引数が渡されて起動した場合, 履歴選択モードに移る
 If( histmode )
@@ -96,7 +124,10 @@ EndWhile
 time_all = TimeStamp()
 Call make_urlPath
 If( DEBUG )
-	Message( urlPath, "[DEBUG] URL出力" )
+	Message( "[DEBUG] URL^NL^---^NL^" & urlPath, thisName )
+EndIf
+If( mailmode )
+	Call exec_mailmode
 EndIf
 
 # ネットワーク接続確認
@@ -145,28 +176,7 @@ If( UseRun )
 EndIf
 
 # 検索履歴ファイルに検索した乗車・降車駅を追記
-histList = NULL
-If( FileExists( histPath ) )
-	histList = ReadFile( histPath )
-EndIf
-
-histWrite = saddr & "から" & daddr
-histWriteAdd = NULL
-i = 1
-ForEach line in split ( histList, "^NL^", 0 )
-	If( ( line eq histWrite ) OR ( line eq NULL ) )
-		# 同じ駅名か空欄の場合はスキップ
-		If( DEBUG )
-			Message( "i=" & i & "^NL^histWrite=" & histWrite & "^NL^line=" & line, "[DEBUG] 履歴一致, 空欄確認" )
-		EndIf
-	Else
-		If( i < histListMax )
-			histWriteAdd = histWriteAdd & "^NL^" & line
-			i = i + 1
-		EndIf
-	EndIf
-EndForEach
-WriteFile( histPath, histWrite & histWriteAdd )
+Call add_history
 
 # 正常終了
 Call ekiExit
@@ -189,6 +199,11 @@ EndSub
 
 # 駅名選択
 Sub ekiInput
+	fbool = FileExists( DateToUnixtime_mscr )
+	If( ( fbool ) AND ( NOT( mailmode )) )
+		firstDepInput = "^NL^(9)乗車駅までかかる時間(分)="
+	EndIf
+
 	foo = Input( "■Google マップ乗換案内スクリプト^NL^乗車・降車駅を入力してください.", \
 	thisName, 0, 1, \
 	"(1)乗車=" & saddr & "^NL^" & \
@@ -198,7 +213,8 @@ Sub ekiInput
 	"(5)表示順(0:時間 1:料金 2:乗換回数)=0^NL^" & \
 	"(6)結果表示数(件)=" & ResNum & "^NL^" & \
 	"(7)有料特急(1:使わない)=^NL^" & \
-	"(8)飛行機(1:使わない)=" )
+	"(8)飛行機(1:使わない)=" & \
+	firstDepInput )
 	# Cancel を押したら終了
 	If( foo eq NULL )
 		Call ekiExit
@@ -220,7 +236,7 @@ Sub ekiInput
 
 		# MortScript使用中のEnterボタン確定時の不具合対策(v4.0, v4.1で発生する)
 		# → 関数コールから 2 秒未満で確定された場合、再コールする
-		If( ( histNum = 0 ) AND \
+		If( ( histNum = 1 ) AND \
 			( ( TimeStamp() - time_enterbug ) < 2 ) )
 			#Message( "おそらく、Enterでの確定呼び出しと判定(リコールします)" )
 			Call choice_history
@@ -255,6 +271,27 @@ EndSub
 
 # [in] text, [out] text
 Sub html2text
+	# 検索結果の1番目は出発時間を記憶する → 家を出る時間を計算
+	If( firstDepChk > 0 )
+		firstDepStr = "<a name=""route0"" href=""#route0"" accesskey=""1"">1) </a><font color=""#008000"">"
+		x = Find( text, firstDepStr )
+	 	x = x + Length(firstDepStr)
+		If( x > 0 )
+			y = Find( text, "&rarr", x )
+			If( y > x )
+				firstDepTime = SubStr( text, x, y - x )
+				Split( firstDepTime , ":", 1, firstDepHour, firstDepMin )
+				#Message( firstDepHour & ":" & firstDepMin )				
+				CallScriptFunction( DateToUnixtime_mscr, \
+					DateToUnixtime, YYYY, MM, DD, firstDepHour, firstDepMin, 0 )  
+				firstDepTime = FormatTime( "H:i", DateToUnixtime - ( firstDepChk * 60 ) )
+				firstDepResult = "[from ekitan.mscr] " & saddr & "から" & daddr & "に行くためには " & firstDepTime & " に家をでましょう(" &  firstDepChk & "分後に電車に乗ります)^LF^^LF^"
+				Message( firstDepResult )
+				text = Replace( text, firstDepStr, firstDepResult )
+			EndIf
+		EndIf
+	EndIf
+
 	# 文字列置換
 	text = Replace( text, "<br />", "^LF^" )
 	text = Replace( text, "&rArr;", "→" )
@@ -339,9 +376,10 @@ EndSub
 # num=3			6	6	結果表示数
 # noexp=1		7	7	有料特急を使わない
 # noal=1		8	8	飛行機を使わない
+# firstDepChk=1		9	9	[特殊param] 現在地から乗車駅までの時間(分)
 Sub make_urlPath
 	i = 1
-	ForEach var in values ( "saddr", "daddr", "time", "ttype", "sort", "num", "noexp", "noal" )
+	ForEach var in values ( "saddr", "daddr", "time", "ttype", "sort", "num", "noexp", "noal", "firstDepChk" )
 		Switch( i )
 		Case( 1 )
 			saddr = inArray[1]
@@ -381,6 +419,10 @@ Sub make_urlPath
 			If( ( inArray[8] ) = 1 )
 				urlPath = urlPath & "&" & var & "=" & "1"
 			EndIf
+		Case( 9 )
+			If( ( inArray[9] ) > 0 )
+				firstDepChk = inArray[9]
+			EndIf
 		EndSwitch
 	    i = i + 1
 	EndForEach
@@ -395,11 +437,84 @@ Sub choice_history
 		histArray = Split( histList , "^NL^" )
 		histNum = Choice( thisName, \
 			"■Google マップ乗換案内スクリプト^NL^検索履歴から乗車・降車駅を選択.", \
-			0, 0, histArray)
+			1, 15, histArray)
 		fromTo = Split( histArray[histNum] , "から" )
 		saddr = fromTo[1]
 		daddr = fromTo[2]
 	Else
 		Message( "履歴ファイルがありません.^NL^乗車・降車駅を入力してください.", thisName )
 	EndIf
+EndSub
+
+# 今回の検索結果を履歴ファイルに追記
+# [in]  histPath, saddr, daddr
+# [out] -
+Sub add_history
+	histList = NULL
+	If( FileExists( histPath ) )
+		histList = ReadFile( histPath )
+	EndIf
+
+	histWrite = saddr & "から" & daddr
+	histWriteAdd = NULL
+	i = 1
+	ForEach line in split ( histList, "^NL^", 0 )
+		If( ( line eq histWrite ) OR ( line eq NULL ) )
+			# 同じ駅名か空欄の場合はスキップ
+			If( DEBUG )
+				Message( "i=" & i & "^NL^histWrite=" & histWrite & "^NL^line=" & line, \
+					"[DEBUG] 履歴一致, 空欄確認" )
+			EndIf
+		Else
+			If( i < histListMax )
+				histWriteAdd = histWriteAdd & "^NL^" & line
+				i = i + 1
+			EndIf
+		EndIf
+	EndForEach
+	WriteFile( histPath, histWrite & histWriteAdd )
+EndSub
+
+# メールモード実行
+Sub exec_mailmode
+	Call add_history
+
+	# ・W-ZERO3メール
+	If( stmail_exe ne NULL )
+		# STMailは & を %26 で表現しないと引数がうまく渡せない
+		stmail_url = Replace( urlPath, "&", "%26" )
+		stmail_args = "mailto:" & mail_to & "?body=" & stmail_url
+		Run( stmail_exe, stmail_args )
+	# ・QMAIL3
+	ElseIf( qmail_exe ne NULL )
+		foo = Input( "■Google マップ乗換案内スクリプト^NL^QMAIL3からメールを送信しますか？^NL^巡回先: " & qmail_goround, \
+		thisName, 0, 1, \
+		"To: "              & mail_to       & "^NL^" & \
+		"Subject: "                         & "^NL^" & \
+		"Content-Type: "    & qmail_type    & "^NL^" & \
+		"X-QMAIL-Account: " & qmail_account & "^NL^" & \
+		"^NL^" & urlPath )
+		# Cancel を押したらクリップボードにURLをコピーして終了
+		If( foo eq NULL )
+			SetClipText( urlPath )
+			Message( "クリップボードにURLをコピーしました.^NL^^NL^" & urlPath, thisName )
+			Call ekiExit
+		EndIf
+		WriteFile( mailPath, foo )
+		qmail_args = "-c " & """" & mailPath & """" & " -q"
+		RunWait( qmail_exe, qmail_args )
+
+		# 巡回
+		If( qmail_goround ne NULL )
+			Run( qmail_exe, "-g """ & qmail_goround & """ -q -f" )
+		EndIf
+	# ・SpeedMail
+	ElseIf( speedmail_exe ne NULL )
+		speedmail_args = mail_to & " /t" & urlPath
+		Run( speedmail_exe, speedmail_args )
+	Else
+		SetClipText( urlPath )
+		Message( "クリップボードにURLをコピーしました.^NL^^NL^" & urlPath, thisName )
+	EndIf
+	Call ekiExit
 EndSub
