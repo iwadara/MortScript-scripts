@@ -1,30 +1,33 @@
-# ekitan.mscr	rev1.0
+# ekitan.mscr	rev1.1
 # ToDo
-# - 同じ名前の駅が複数ある場合に選択できるように
 # - 前回入力値の記憶
 # - 履歴管理(10回前まで上書きせずに保存)
 # - 自動接続/切断
 # - 入力画面が出たらカーソルを最適位置に
-# - mpTodayとの連携(Today上に結果表示)
 # - エラー処理の強化
+# - 保存ログをディレクトリ指定にする
 
 # ◆◆◆ ユーザー設定項目 ここから ◆◆◆
-# (1)乗車駅のデフォルト設定(ない場合は "" のまま)
-GetOn	= ""
-# (2)降車駅のデフォルト設定(ない場合は "" のまま)
-GetOut	= ""
-# (3)保存するHTMLファイルのパス
+# (1)保存するHTMLファイルのパス
 htmPath = SystemPath( "ScriptPath" ) \ "ekitan.htm.txt"
-# (4)保存するテキストファイルのパス
+# (2)保存するテキストファイルのパス
 txtPath = SystemPath( "ScriptPath" ) \ "ekitan.log.txt"
-# (5)結果表示数(デフォルト:3件)
+# (3)結果表示数(デフォルト:3件)
 ResNum = 3
-# (6)結果をクリップボードに格納する(ON:デフォルト/OFF)
+# (4)結果をクリップボードに格納する(ON/OFF)
 UseClip = ON
 # ◆◆◆ ユーザー設定項目 ここまで ◆◆◆
 
+# ◆ Tips 1 ◆
+# 引数に sf=(乗車駅), st=(下車駅) をつけて起動できます(両方指定でも可)
+# 例: 横浜から川崎.lnk
+# "\Program Files\MortScript\MortScript.exe" "\My Documents\Mscr\ekitan.mscr" sf="横浜" st="川崎"
+# ◆ Tips End ◆
+
 # 路線検索エンジンURLパス(駅前探険倶楽部SS)
 urlPath = "http://www8.ekitan.com/ss/N2?an=-1"
+urlPath2 = "http://www8.ekitan.com/ss/N3?an=-1"
+
 # 現在の時刻をセット
 GetTime( hh, mi, ss, DD, MM, YYYY )
 # スクリプト名を取得
@@ -32,8 +35,8 @@ thisName = SystemPath( "ScriptName" ) & SystemPath( "ScriptExt" )
 
 foo = Input( "■駅探 路線検索スクリプト^NL^乗車・降車駅を入力してください.", \
 thisName, 0, 1, \
-"(1)乗車=" & GetOn & "^NL^" & \
-"(2)降車=" & GetOff & "^NL^" & \
+"(1)乗車=" & sf & "^NL^" & \
+"(2)降車=" & st & "^NL^" & \
 "(3)出発日付=" & YYYY & MM & DD & "^NL^" & \
 "(4)時間=" & hh & mi & "^NL^" & \
 "(5)発・着(0:発 1:着)=0^NL^" & \
@@ -54,62 +57,8 @@ ForEach line in split ( foo, "^LF^", 0 )
 	i = i + 1
 EndForEach
 
-# ex.			in	out	summary
-# ------------------------------
-# sf=toukyou	1	1	乗車
-# st=yokohama	2	2	下車
-# YEAR=200704	3+	3	出発年月
-# DAY=16		3+	4	出発日
-# hour=20		4+	5	時
-# min1=3		4+	6	分(10の位)
-# min2=7		4+	7	分(1の位)
-# sr=0			5	8	時刻発着指定 0:発 1:着
-# rp=0			6	9	表示順 0:所要時間 1:料金 2:乗換回数
-# ep=0			7	10	100km以下特急利用 0:しない 1:する
-# pn=3			8	11	結果表示数
-# air=0			9	12	優先航空(0:なし 1:JAL 2:ANA 4:SKY/ADO)=0" )
-
-# 出力文字列の生成(urlPath)
-i = 1
-ForEach var in values ( "sf", "st", "YEAR", "DAY", "hour", "min1", "min2", "sr", "rp", "ep", "pn", "air" )
-	Switch( i )
-	Case( 1 )
-		urlPath = urlPath & "&" & var & "=" & inArray[1]
-	Case( 2 )
-		urlPath = urlPath & "&" & var & "=" & inArray[2]
-	Case( 3 )
-		If( Length( inArray[3] ) = 8 )
-			urlPath = urlPath & "&" & var & "=" & SubStr( inArray[3], 1, 6 )
-		EndIf
-	Case( 4 )
-		If( Length( inArray[3] ) = 8 )
-			urlPath = urlPath & "&" & var & "=" & SubStr( inArray[3], 7, 2 )
-		EndIf
-	Case( 5 )
-		If( Length( inArray[4] ) = 4 )
-			urlPath = urlPath & "&" & var & "=" & SubStr( inArray[4], 1, 2 )
-		EndIf
-	Case( 6 )
-		If( Length( inArray[4] ) = 4 )
-			urlPath = urlPath & "&" & var & "=" & SubStr( inArray[4], 3, 1 )
-		EndIf
-	Case( 7 )
-		If( Length( inArray[4] ) = 4 )
-			urlPath = urlPath & "&" & var & "=" & SubStr( inArray[4], 4, 1 )
-		EndIf
-	Case( 8 )
-		urlPath = urlPath & "&" & var & "=" & inArray[5]
-	Case( 9 )
-		urlPath = urlPath & "&" & var & "=" & inArray[6]
-	Case( 10 )
-		urlPath = urlPath & "&" & var & "=" & inArray[7]
-	Case( 11 )
-		urlPath = urlPath & "&" & var & "=" & inArray[8]
-	Case( 12 )
-		urlPath = urlPath & "&" & var & "=" & inArray[9]
-	EndSwitch
-    i = i + 1
-EndForEach
+# 出力文字列の生成
+Call make_urlPath
 
 # 接続チェック( W-SIM, 無線LAN )
 wsim = RegRead("HKLM", "System\State\Phone", "Status")
@@ -132,31 +81,36 @@ If( Length( text ) = NULL )
 	Exit
 EndIf
 
-# HTMLをテキスト用に変換
-Call html2text
+# 同一駅名がある場合は駅名選択、そうでない場合はテキスト表示
+If( Find( text, "同一駅名" ) )
+	# 乗車駅セレクト
+	sfst = "sf"
+	Call sfst_sel
+	# 降車駅セレクト
+	sfst = "st"
+	Call sfst_sel
 
-# TEXTファイルとして保存 → 実行
-WriteFile( txtPath, text )
-If( Find( text, "間の経路" ) )
-	Run( txtPath )
-Else
-	# 取得失敗 → ブラウザ起動
-	If( Question ( \
-		"正しく取得できませんでした.^NL^"	& \
-		"ログ結果を表示しますか?^NL^^NL^"	& \
-		"※ 以下の要因が考えられます.^NL^"	& \
-		"(1) 駅名が複数ある(要修正)^NL^"	& \
-		"(2) 入力された文字列が不正^NL^", thisName ) )
-		Run( txtPath )
+	# 出力文字列の生成2(駅名選択後)
+	Call make_urlPath2
+
+	# HTMLファイルの取得, 保存
+	Download( urlPath2, htmPath )
+	text = ReadFile( htmPath )
+	If( Length( text ) = NULL )
+		Exit
 	EndIf
 EndIf
+
+# HTMLをテキスト用に変換
+Call html2text
+WriteFile( txtPath, text )
+# ViewText向けにTodayを再描画(すぐにテキストを反映)
+RedrawToday
+Run( txtPath )
 Exit
 
 # [in] text, [out] text
 Sub html2text
-	# 処理中カーソルの表示
-	ShowWaitCursor
-
 	# "<"で始まり、 ">"で終わる箇所はカット
 	buf = ""
 	x = Find( text, "<" )
@@ -187,3 +141,154 @@ Sub html2text
 	EndIf
 EndSub
 
+# [in] sfst [out] ekicode, ekiname
+Sub sfst_sel
+	# 既に駅が1つならば確定、そうでない場合はチョイス
+	wd = "TYPE=HIDDEN NAME=" & sfst & " VALUE="
+	x = Find( text, wd )
+	If( x > 0 )
+		urlPath2 = urlPath2 & "&" & sfst & "=" & \
+		SubStr( text, x + Length( wd ), 5 )
+	Else
+		wd = "<SELECT NAME=" & sfst & ">^CR^^LF^"
+		x = Find( text, wd )
+		If( x < 1 )
+			Exit
+		EndIf
+		y = Find( SubStr( text, x + Length( wd )  ), "^CR^^LF^</SELECT>")
+		If( y < 1 )
+			Exit
+		EndIf
+		buf = SubStr( text, x + Length( wd ), y )
+
+		i = 1
+		ForEach line in split ( buf, "^LF^", 0 )
+			# VALUE=の後ろの文字列をゲットする
+			bufsel[i] = Part( line, "=", 2 )
+			ekicode[i] = SubStr( Part( bufsel[i], ">", 1 ), 1, 5 )
+			ekiname[i] = Part( bufsel[i], ">", 2 )
+			i = i + 1
+		EndForEach
+
+		If( sfst eq "sf" )
+			scene = "乗車駅"
+		Else
+			scene = "下車駅"
+		EndIf
+		i = Choice( thisName, "【" & scene & "】^NL^同一駅名があります. 候補から選択して下さい.", 1, 10, ekiname )
+		If( i )
+			urlPath2 = urlPath2 & "&" & sfst & "=" & ekicode[i]
+		Else
+			Exit
+		EndIf
+	EndIf
+EndSub
+
+# 出力文字列の生成(urlPath)
+# ex.			in	out	summary
+# ------------------------------
+# sf=toukyou	1	1	乗車
+# st=yokohama	2	2	下車
+# YEAR=200704	3+	3	出発年月
+# DAY=16		3+	4	出発日
+# hour=20		4+	5	時
+# min1=3		4+	6	分(10の位)
+# min2=7		4+	7	分(1の位)
+# sr=0			5	8	時刻発着指定 0:発 1:着
+# rp=0			6	9	表示順 0:所要時間 1:料金 2:乗換回数
+# ep=0			7	10	100km以下特急利用 0:しない 1:する
+# pn=3			8	11	結果表示数
+# air=0			9	12	優先航空(0:なし 1:JAL 2:ANA 4:SKY/ADO)=0" )
+Sub make_urlPath
+	i = 1
+	ForEach var in values ( "sf", "st", "YEAR", "DAY", "hour", "min1", "min2", "sr", "rp", "ep", "pn", "air" )
+		Switch( i )
+		Case( 1 )
+			urlPath = urlPath & "&" & var & "=" & inArray[1]
+		Case( 2 )
+			urlPath = urlPath & "&" & var & "=" & inArray[2]
+		Case( 3 )
+			If( Length( inArray[3] ) = 8 )
+				urlPath = urlPath & "&" & var & "=" & SubStr( inArray[3], 1, 6 )
+			EndIf
+		Case( 4 )
+			If( Length( inArray[3] ) = 8 )
+				urlPath = urlPath & "&" & var & "=" & SubStr( inArray[3], 7, 2 )
+			EndIf
+		Case( 5 )
+			If( Length( inArray[4] ) = 4 )
+				urlPath = urlPath & "&" & var & "=" & SubStr( inArray[4], 1, 2 )
+			EndIf
+		Case( 6 )
+			If( Length( inArray[4] ) = 4 )
+				urlPath = urlPath & "&" & var & "=" & SubStr( inArray[4], 3, 1 )
+			EndIf
+		Case( 7 )
+			If( Length( inArray[4] ) = 4 )
+				urlPath = urlPath & "&" & var & "=" & SubStr( inArray[4], 4, 1 )
+			EndIf
+		Case( 8 )
+			urlPath = urlPath & "&" & var & "=" & inArray[5]
+		Case( 9 )
+			urlPath = urlPath & "&" & var & "=" & inArray[6]
+		Case( 10 )
+			urlPath = urlPath & "&" & var & "=" & inArray[7]
+		Case( 11 )
+			urlPath = urlPath & "&" & var & "=" & inArray[8]
+		Case( 12 )
+			urlPath = urlPath & "&" & var & "=" & inArray[9]
+		EndSwitch
+	    i = i + 1
+	EndForEach
+EndSub
+
+# 出力文字列の生成2(urlPath2)
+# ex.				in	out	summary
+# ----------------------------------
+# sf=3260-			OK	OK	乗車(駅コード)
+# st=1911-			OK	OK	下車(駅コード)
+# month=20070416	3	3	出発年月日
+# hour=20			4+	5	時
+# min1=3			4+	6	分(10の位)
+# min2=7			4+	7	分(1の位)
+# sr=0				5	8	時刻発着指定 0:発 1:着
+# rp=0				6	9	表示順 0:所要時間 1:料金 2:乗換回数
+# ep=0				7	10	100km以下特急利用 0:しない 1:する
+# pn=3				8	11	結果表示数
+# air=0				9	12	優先航空(0:なし 1:JAL 2:ANA 4:SKY/ADO)=0" )
+Sub make_urlPath2
+	i = 1
+	ForEach var in values ( "sf", "st", "month", "欠番", "hour", "min1", "min2", "sr", "rp", "ep", "pn", "air" )
+		Switch( i )
+		# Case( 1 ) は sfst_sel にて設定済
+		# Case( 2 ) は sfst_sel にて設定済
+		Case( 3 )
+			urlPath2 = urlPath2 & "&" & var & "=" & inArray[3]
+		# Case( 4 ) は欠番(YEARとDAYがmonthに統合)
+		# ここから下は make_urlPath と同様(urlPathがurlPath2になっているだけ)
+		Case( 5 )
+			If( Length( inArray[4] ) = 4 )
+				urlPath2 = urlPath2 & "&" & var & "=" & SubStr( inArray[4], 1, 2 )
+			EndIf
+		Case( 6 )
+			If( Length( inArray[4] ) = 4 )
+				urlPath2 = urlPath2 & "&" & var & "=" & SubStr( inArray[4], 3, 1 )
+			EndIf
+		Case( 7 )
+			If( Length( inArray[4] ) = 4 )
+				urlPath2 = urlPath2 & "&" & var & "=" & SubStr( inArray[4], 4, 1 )
+			EndIf
+		Case( 8 )
+			urlPath2 = urlPath2 & "&" & var & "=" & inArray[5]
+		Case( 9 )
+			urlPath2 = urlPath2 & "&" & var & "=" & inArray[6]
+		Case( 10 )
+			urlPath2 = urlPath2 & "&" & var & "=" & inArray[7]
+		Case( 11 )
+			urlPath2 = urlPath2 & "&" & var & "=" & inArray[8]
+		Case( 12 )
+			urlPath2 = urlPath2 & "&" & var & "=" & inArray[9]
+		EndSwitch
+	    i = i + 1
+	EndForEach
+EndSub
