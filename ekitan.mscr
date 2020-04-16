@@ -1,7 +1,7 @@
 # ----------------------------------------
-# Name:    ekitan.mscr(rev2.0)
+# Name:    ekitan.mscr(rev2.1)
 # Author:  ‚¢‚í‚¾‚ç
-# Date:    2008/07/20 01:41
+# Date:    2008/07/20 12:57
 # Version: MortScript-4.1-PPC
 #
 # ToDo:
@@ -25,7 +25,7 @@ UseClip = ON
 # (6)Œ‹‰Ê‚ğƒeƒLƒXƒgƒGƒfƒBƒ^‚ÅŠJ‚­(ON/OFF)
 UseRun = ON
 # (7)ƒ_ƒCƒAƒ‹ƒ\ƒtƒg‚ğg‚Á‚Ä©“®Ú‘±ON/OFF‚ğs‚¤‚© ¨ 0:–³Œø, 1:—LŒø(ƒAƒhƒGƒXv1.01aˆÈã), 2:—LŒø(‚»‚êˆÈŠO)
-InetSetting = 0
+InetSetting = 1
 # (7-A)[ƒ_ƒCƒAƒ‹ƒ\ƒtƒgw’è] harddialg—p‚ÍˆÈ‰º‚Ì1s‚Ì # ‚ğ‚Í‚¸‚·
 #InetPath = "\Program Files\harddial\harddial.exe"
 # (7-B)[ƒ_ƒCƒAƒ‹ƒ\ƒtƒgw’è] WkTASKg—p‚ÍˆÈ‰º‚Ì2s‚Ì # ‚ğ‚Í‚¸‚·
@@ -72,12 +72,12 @@ foo = Input( "¡Google ƒ}ƒbƒvæŠ·ˆÄ“àƒXƒNƒŠƒvƒg^NL^æÔE~Ô‰w‚ğ“ü—Í‚µ‚Ä‚­‚¾‚³‚
 thisName, 0, 1, \
 "(1)æÔ=" & saddr & "^NL^" & \
 "(2)~Ô=" & daddr & "^NL^" & \
-"(3)ŠÔ=" & hh & mm & "^NL^" & \
+"(3)ŠÔ=" & hh & mi & "^NL^" & \
 "(4)”­E’…EI“d(0:”­ 1:’… 2:I“d)=0^NL^" & \
 "(5)•\¦‡(0:ŠÔ 1:—¿‹à 2:æŠ·‰ñ”)=0^NL^" & \
 "(6)Œ‹‰Ê•\¦”(Œ)=" & ResNum & "^NL^" & \
 "(7)—L—¿“Á‹}(1:g‚í‚È‚¢)=^NL^" & \
-"(8)”òs‹@(1:g‚í‚È‚¢)=^NL^" )
+"(8)”òs‹@(1:g‚í‚È‚¢)=" )
 # Cancel ‚ğ‰Ÿ‚µ‚½‚çI—¹
 If( foo eq NULL )
 	Call ekiExit
