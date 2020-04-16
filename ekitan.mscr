@@ -1,4 +1,4 @@
-# ekitan.mscr	rev1.3
+# ekitan.mscr	rev1.4
 # ToDo
 # - エラー処理の強化
 # - 前回入力値の記憶(引数なし起動時)
@@ -18,6 +18,8 @@ ResNum = 3
 UseClip = ON
 # (6)結果をテキストエディタで開く(ON/OFF)
 UseRun = ON
+# (7)harddialを使って自動接続ON/OFFを行う場合 → 次行先頭の#をはずす
+#UseHarddial = "\Program Files\harddial\harddial.exe"
 # ◆◆◆ ユーザー設定項目 ここまで ◆◆◆
 
 # ◆ Tips 1 ◆
@@ -31,6 +33,14 @@ UseRun = ON
 # ☆手動でTodayに結果表示 
 #   ViewTextで「クリップボードから貼り付け」を行います(結果はクリップボードにも格納されています)
 # ◆ Tips End ◆
+
+# 自動接続 ON
+If( UseHarddial ne NULL )
+	Call chk_online
+	If( NOT( is_online ) )
+		Run(UseHarddial)
+	EndIf
+EndIf
 
 # 保存ファイルパスの確定
 htmPath = folPath \ htmName
@@ -58,7 +68,7 @@ thisName, 0, 1, \
 "(9)優先航空(0:なし 1:JAL 2:ANA 4:SKY/ADO)=0" )
 # Cancel を押したら終了
 If( foo eq NULL )
-	Exit
+	Call ekiExit
 EndIf
 
 # 入力文字列の取得(inArray)
@@ -72,19 +82,14 @@ EndForEach
 # 出力文字列の生成
 Call make_urlPath
 
-# 接続チェック( W-SIM, 無線LAN, ActiveSync )
-wsim = RegRead("HKLM", "System\State\Phone", "Status")
-wlan = RegRead("HKLM", "System\State\Hardware", "WiFi")
-rapi = RegRead("HKLM", "System\State\Hardware", "Cradled")
-While( NOT( wsim OR wlan OR rapi ) )
+Call chk_online
+While( NOT( is_online ) )
 	If( Question( \
 		"オフライン:^NL^接続を行ってください.", \
 		thisName, "RetryCancel" ) = CANCEL )
-		Exit
+		Call ekiExit
 	Else
-		wsim = RegRead("HKLM", "System\State\Phone", "Status")
-		wlan = RegRead("HKLM", "System\State\Hardware", "WiFi")
-		rapi = RegRead("HKLM", "System\State\Hardware", "Cradled")
+		Call chk_online
 	EndIf
 EndWhile
 
@@ -92,7 +97,7 @@ EndWhile
 Download( urlPath, htmPath )
 text = ReadFile( htmPath )
 If( Length( text ) = NULL )
-	Exit
+	Call ekiExit
 EndIf
 
 # 同一駅名がある場合は駅名選択、そうでない場合はテキスト表示
@@ -111,7 +116,7 @@ If( Find( text, "同一駅名" ) )
 	Download( urlPath2, htmPath )
 	text = ReadFile( htmPath )
 	If( Length( text ) = NULL )
-		Exit
+		Call ekiExit
 	EndIf
 EndIf
 
@@ -124,7 +129,33 @@ RedrawToday
 If( UseRun )
 	Run( txtPath )
 EndIf
-Exit
+Call ekiExit
+
+# 終了処理
+Sub ekiExit
+	# 自動接続 OFF
+	If( UseHarddial ne NULL )
+		Call chk_online
+		If( is_online )
+			Run(UseHarddial)
+		EndIf
+	EndIf
+
+	Exit
+EndSub
+
+# 接続チェック(W-SIM, 無線LAN, ActiveSync)
+# [out] is_online
+Sub chk_online
+	wsim = RegRead("HKLM", "System\State\Phone", "Status")
+	wlan = RegRead("HKLM", "System\State\Hardware", "WiFi")
+	rapi = RegRead("HKLM", "System\State\Hardware", "Cradled")
+	If( wsim OR wlan OR rapi )
+		is_online = true
+	Else
+		is_online = false
+	EndIf
+EndSub
 
 # [in] text, [out] text
 Sub html2text
@@ -170,11 +201,11 @@ Sub sfst_sel
 		wd = "<SELECT NAME=" & sfst & ">^CR^^LF^"
 		x = Find( text, wd )
 		If( x < 1 )
-			Exit
+			Call ekiExit
 		EndIf
 		y = Find( SubStr( text, x + Length( wd )  ), "^CR^^LF^</SELECT>")
 		If( y < 1 )
-			Exit
+			Call ekiExit
 		EndIf
 		buf = SubStr( text, x + Length( wd ), y )
 
@@ -196,7 +227,7 @@ Sub sfst_sel
 		If( i )
 			urlPath2 = urlPath2 & "&" & sfst & "=" & ekicode[i]
 		Else
-			Exit
+			Call ekiExit
 		EndIf
 	EndIf
 EndSub
