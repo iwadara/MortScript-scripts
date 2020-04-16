@@ -1,7 +1,7 @@
 # ----------------------------------------
-# Name:    ekitan.mscr(rev2.1)
+# Name:    ekitan.mscr(rev2.2)
 # Author:  いわだら
-# Date:    2008/07/20 12:57
+# Date:    2008/12/16 01:10
 # Version: MortScript-4.1-PPC
 #
 # ToDo:
@@ -51,6 +51,8 @@ InetSetting = 1
 # 自動接続 ON
 If( InetSetting > 0 )
 	Call chk_online
+	# PC用DEBUG(オンライン判定なし)
+	# is_online = true
 	If( NOT( is_online ) )
 		Run( InetPath, InetParam )
 	EndIf
@@ -110,13 +112,17 @@ EndWhile
 
 # HTMLファイルの取得, 保存
 Download( urlPath, htmPath )
-text = ReadFile( htmPath )
+text = ReadFile( htmPath, 0, "utf8-prefix" )
 If( Length( text ) = NULL )
 	Call ekiExit
 EndIf
 
 # HTMLをテキスト用に変換
+time_chk = TimeStamp()
 Call html2text
+time_chk = TimeStamp() - time_chk
+text = text & "Convert time: " & time_chk & "sec.^LF^"
+
 WriteFile( txtPath, text )
 # ViewText向けにTodayを再描画(すぐにテキストを反映)
 RedrawToday
@@ -168,7 +174,51 @@ Sub html2text
 	text = Replace( text, "<br />", "^LF^" )
 	text = Replace( text, "&rArr;", "→" )
 	text = Replace( text, "&rarr;", "→" )
+
+	# あとは頻度の多そうなタグ順にNULL
 	text = Replace( text, "&nbsp;", NULL )
+	text = Replace( text, "<font color=""#008000"">", NULL )
+	text = Replace( text, "<font color=""#000080"">", NULL )
+	text = Replace( text, "</table>", NULL )
+	text = Replace( text, "<table>", NULL )
+	text = Replace( text, "</small>", NULL )
+	text = Replace( text, "<small>", NULL )
+	text = Replace( text, "</font>", NULL )
+	text = Replace( text, "<tr bgcolor=""#e5ecf9"">", NULL )
+	text = Replace( text, "<img src=""http://www.google.com/mapfiles/transit/ui/leg-icon-rail.gif"" />", NULL )
+	text = Replace( text, "</tr>", NULL )
+	text = Replace( text, "<tr>", NULL )
+	text = Replace( text, "</td>", NULL )
+	text = Replace( text, "<td>", NULL )
+	text = Replace( text, "</div>", NULL )
+	text = Replace( text, "<div>", NULL )
+	text = Replace( text, "</option>", NULL )
+	text = Replace( text, "</select>", NULL )
+	text = Replace( text, "<span style=""font:smaller"">", NULL )
+	text = Replace( text, "</span>", NULL )
+	text = Replace( text, "</a>", NULL )
+	text = Replace( text, "<hr />", NULL )
+	text = Replace( text, "</form>", NULL )
+
+	# 1個くらいしかなさそうなタグ(仕様変更されたらすぐに意味なくなるかも)
+	text = Replace( text, "<?xml version=""1.0"" encoding=""UTF-8""?>", NULL )
+	text = Replace( text, "<!DOCTYPE html PUBLIC ""-//WAPFORUM//DTD XHTML Mobile 1.0//EN"" ""http://www.wapforum.org/DTD/xhtml-mobile10.dtd"">", NULL )
+	text = Replace( text, "<html xmlns=""http://www.w3.org/1999/xhtml"">", NULL )
+	text = Replace( text, "<img src=""http://www.google.co.jp/images/transit_mobile_logo.gif"" alt=""Google Local"" />", NULL )
+	text = Replace( text, "<a name=""top"">", NULL )
+	text = Replace( text, "<a href=""#refinement"">", NULL )
+	text = Replace( text, "</p>", NULL )
+	text = Replace( text, "<p>", NULL )
+	text = Replace( text, "<center>", NULL )
+	text = Replace( text, "</center>", NULL )
+	text = Replace( text, "</title>", NULL )
+	text = Replace( text, "<title>", NULL )
+	text = Replace( text, "</head>", NULL )
+	text = Replace( text, "<head>", NULL )
+	text = Replace( text, "</body>", NULL )
+	text = Replace( text, "<body>", NULL )
+	text = Replace( text, "</html>", NULL )
+	text = Replace( text, "<html>", NULL )
 
 	# "<"で始まり、 ">"で終わる箇所はカット
 	buf = ""
