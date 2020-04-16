@@ -1,0 +1,88 @@
+# TodaySoftkey.mscr	rev1.0
+# Todayソフトキー設定
+
+# 設定時のキー表示名
+LeftView1 = "左キー名前"
+LeftView2 = "左キー場所"
+RightView1 = "右キー名前"
+RightView2 = "右キー場所"
+
+# 値の存在をチェックしてからRegRead(不正な値を読み取ってしまうバグ対策)
+If( RegValueExists( "HKCU", "Software\Microsoft\Today\Keys\112", "Default" ) )
+	LeftKeyDef = RegRead( "HKCU", "Software\Microsoft\Today\Keys\112", "Default" )
+EndIf
+If( RegValueExists( "HKCU", "Software\Microsoft\Today\Keys\112", "Open" ) )
+	LeftKeyOpen = RegRead( "HKCU", "Software\Microsoft\Today\Keys\112", "Open" )
+EndIf
+If( RegValueExists( "HKCU", "Software\Microsoft\Today\Keys\113", "Default" ) )
+	RightKeyDef = RegRead( "HKCU", "Software\Microsoft\Today\Keys\113", "Default" )
+EndIf
+If( RegValueExists( "HKCU", "Software\Microsoft\Today\Keys\113", "Open" ) )
+	RightKeyOpen = RegRead( "HKCU", "Software\Microsoft\Today\Keys\113", "Open" )
+EndIf
+
+# 入力画面
+foo = Input( "※W-ZERO3で左キーを有効にするにはKOTETU Battery Monitorが必要です.", \
+SystemPath( "ScriptName" ), 0, 1, \
+LeftView1 & "=" & LeftKeyDef & "^NL^" & \
+LeftView2 & "=" & LeftKeyOpen & "^NL^" & \
+"^NL^" & \
+RightView1 & "=" & RightKeyDef & "^NL^" & \
+RightView2 & "=" & RightKeyOpen )
+# Cancel を押したら終了
+If( foo eq NULL )
+	Exit
+EndIf
+
+# 入力文字列の取得・設定(Key, Val)
+i = 1
+ForEach line in split ( foo, "^LF^", 0 )
+	Key[i] = Part( line, "=", 1 )
+	Val[i] = Part( line, "=", 2 )
+	Call SetReg
+	i = i + 1
+EndForEach
+Message( "設定を反映させました.^NL^再起動後に有効になります.", \
+SystemPath( "ScriptName" ) )
+Exit
+
+Sub SetReg
+	rKey = "Software\Microsoft\Today\Keys\112"
+	rView = LeftView1
+	rSubkey = "Default"
+	rDefval = "予定表"
+	Call SetRegCore
+	rView = LeftView2
+	rSubkey = "Open"
+	rDefval = NULL
+	Call SetRegCore
+
+	rKey = "Software\Microsoft\Today\Keys\113"
+	rView = RightView1
+	rSubkey = "Default"
+	rDefval = "連絡先"
+	Call SetRegCore
+	rView = RightView2
+	rSubkey = "Open"
+	rDefval = NULL
+	Call SetRegCore
+EndSub
+
+# [in] rView, rKey, rSubkey, rDefVal
+Sub SetRegCore
+	# 対象のキー名か
+	If( Key[i] eq rView )
+		If( Val[i] ne NULL )
+			RegWriteString( "HKCU", rKey, rSubkey, Val[i] )
+		Else
+			RegWriteString( "HKCU", rKey, rSubkey, rDefVal )
+		EndIf
+	EndIf
+EndSub
+
+[script]
+author="いわだら"
+name="TodaySoftkey.mscr"
+brief="Todayソフトキー設定"
+rev=1.0
+mscrver=4.0

@@ -1,0 +1,45 @@
+# appdscript.mscr	rev1.1
+# Oyajin Appd 拡張メニュースクリプト
+
+# 拡張メニュースクリプトのフォルダ指定
+scriptfol = "\Program Files\Oyajin\scripts"
+scriptname = "Oyajin Appd scripts"
+
+Call SelectScript
+Exit
+
+# [in] scriptfol
+Sub SelectScript
+	# scriptolにあるファイル取得
+	i = 1
+	ForEach f in files ( scriptfol \ "*.*" )
+		# スクリプト概要とパスの取得
+		an[i] = IniRead( f, "script", "brief" )
+		If( an[i] = NULL)
+			scriptlen = Length( scriptfol ) + 2
+			an[i] = Part( SubStr( f, scriptlen ), ".", 1 )
+		EndIf
+		af[i] = f
+		i = i + 1
+	EndForEach
+	If( i < 2 )
+		Message( "エラー: フォルダまたはファイルが見つかりません." & \
+		"^NL^(" & scriptfol & ")", \
+		scriptname )
+		Exit
+	EndIf
+
+	i = Choice( scriptname, \
+	"[拡張ﾒﾆｭｰ(&N)]^NL^実行するスクリプトを選択して下さい.", \
+	1, 0, an )
+	If( i > 0 )
+		Run( af[i] )
+	EndIf
+EndSub
+
+[script]
+author="いわだら"
+name="appdscript.mscr"
+brief="Oyajin Appd 拡張メニュースクリプト"
+rev=1.1
+mscrver=4.0
